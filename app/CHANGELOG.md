@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4 — 2026-10-14
+
+Poignées tactiles sur les deux bords de la sélection : ajustement indépendant du début et de la fin, calé aux mesures, sans inverser les limites. Appuyer à l’intérieur conserve la région ; appuyer ou glisser à l’extérieur en crée une nouvelle. Flèches clavier et explications tuto pour les poignées. Projets inchangés.
+
 ## 0.1.3 — 2026-10-14
 
 Mode tuto activable depuis l’en-tête : appuyer sur une commande ou un champ affiche son explication en français sans exécuter l’action. Couvre lecture, sélection, gestes, annotations, références, projets et exports ; reste actif jusqu’à Quitter le tuto. Données existantes conservées.

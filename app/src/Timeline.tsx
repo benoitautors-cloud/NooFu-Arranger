@@ -47,6 +47,7 @@ export default function Timeline({
   followRef.current = followPlayback;
   zoomRef.current = zoom;
   callbacks.current = { onReady, onError };
+  const resizing = useRef<{ side: "start" | "end"; range: Range } | null>(null);
   const span = barDuration(p.bpm, p.timeSignature),
     bars = Math.max(1, Math.ceil(duration / span)),
     width = Math.max(1, duration * zoom),
@@ -344,26 +345,116 @@ export default function Timeline({
             aria-label="Glisser pour sélectionner des mesures"
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture(e.pointerId);
-              anchor.current = barAt(e);
-              onSelect(selectedRange(anchor.current, anchor.current, bars));
+              const handle =
+                e.target instanceof Element
+                  ? e.target.closest("[data-selection-edge]")
+                  : null;
+              const side = handle?.getAttribute("data-selection-edge");
+              if (selection && (side === "start" || side === "end")) {
+                resizing.current = { side, range: { ...selection } };
+                anchor.current = barAt(e);
+                return;
+              }
+              const bar = barAt(e);
+              if (
+                selection &&
+                bar >= selection.barStart &&
+                bar <= selection.barEnd
+              ) {
+                anchor.current = null;
+                return;
+              }
+              resizing.current = null;
+              anchor.current = bar;
+              onSelect(selectedRange(bar, bar, bars));
             }}
             onPointerMove={(e) => {
-              if (anchor.current !== null)
+              const drag = resizing.current;
+              if (drag) {
+                const bar = barAt(e);
+                onSelect(
+                  drag.side === "start"
+                    ? {
+                        barStart: Math.min(bar, drag.range.barEnd),
+                        barEnd: drag.range.barEnd,
+                      }
+                    : {
+                        barStart: drag.range.barStart,
+                        barEnd: Math.max(bar, drag.range.barStart),
+                      },
+                );
+              } else if (anchor.current !== null)
                 onSelect(selectedRange(anchor.current, barAt(e), bars));
             }}
-            onPointerUp={() => (anchor.current = null)}
-            onPointerCancel={() => (anchor.current = null)}
+            onPointerUp={() => {
+              anchor.current = null;
+              resizing.current = null;
+            }}
+            onPointerCancel={() => {
+              anchor.current = null;
+              resizing.current = null;
+            }}
             style={{ backgroundSize: `${barWidth}px 100%` }}
           >
             {selection && (
               <div
-                className="selected"
+                className={`selected ${(selection.barEnd - selection.barStart + 1) * barWidth < 88 ? "compact" : ""}`}
                 style={{
                   left: (selection.barStart - 1) * barWidth,
                   width: (selection.barEnd - selection.barStart + 1) * barWidth,
                 }}
               >
-                Mesures {selection.barStart}–{selection.barEnd}
+                <span className="selection-caption">
+                  Mesures {selection.barStart}–{selection.barEnd}
+                </span>
+                <button
+                  className="selection-handle start"
+                  data-selection-edge="start"
+                  aria-label="Ajuster le début de la sélection"
+                  title="Glisser pour déplacer le début"
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                      e.preventDefault();
+                      onSelect({
+                        ...selection,
+                        barStart: Math.max(
+                          1,
+                          Math.min(
+                            selection.barEnd,
+                            selection.barStart +
+                              (e.key === "ArrowRight" ? 1 : -1),
+                          ),
+                        ),
+                      });
+                    }
+                  }}
+                >
+                  <span>↔</span>
+                </button>
+                <button
+                  className="selection-handle end"
+                  data-selection-edge="end"
+                  aria-label="Ajuster la fin de la sélection"
+                  title="Glisser pour déplacer la fin"
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                      e.preventDefault();
+                      onSelect({
+                        ...selection,
+                        barEnd: Math.max(
+                          selection.barStart,
+                          Math.min(
+                            bars,
+                            selection.barEnd +
+                              (e.key === "ArrowRight" ? 1 : -1),
+                          ),
+                        ),
+                      });
+                    }
+                  }}
+                >
+                  <span>↔</span>
+                </button>
               </div>
             )}
           </div>

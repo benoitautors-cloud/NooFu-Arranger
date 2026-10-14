@@ -180,7 +180,7 @@ label {
   border: 2px solid #b9f96d;
   font-size: 12px;
   padding: 6px;
-  overflow: hidden;
+  overflow: visible;
   pointer-events: none;
 }
 .annotation-lanes {
@@ -363,4 +363,60 @@ header button.tutorial-toggle {
 }
 .tutorial-panel strong {
   font-size: 18px;
+}
+
+.selected .selection-caption {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0 22px;
+}
+.selected .selection-handle {
+  pointer-events: auto;
+  touch-action: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  height: 100%;
+  padding: 0;
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #111b0d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.selected .selection-handle.start {
+  left: -2px;
+}
+.selected .selection-handle.end {
+  right: -2px;
+}
+.selection-handle span {
+  display: grid;
+  place-items: center;
+  background: #b9f96d;
+  border: 1px solid #111b0d;
+  border-radius: 8px;
+  width: 22px;
+  height: 54px;
+  font-weight: bold;
+}
+.selection-handle:focus-visible {
+  outline: 2px solid white;
+  outline-offset: -3px;
+}
+
+.selected.compact .selection-handle.start {
+  top: 0;
+  bottom: auto;
+  height: 50%;
+}
+.selected.compact .selection-handle.end {
+  top: 50%;
+  bottom: 0;
+  height: 50%;
 }

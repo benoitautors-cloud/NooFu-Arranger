@@ -490,3 +490,67 @@ test("tutorial explains controls without executing actions and can be exited", a
   await page.getByRole("button", { name: "Appliquer BPM" }).click();
   await expect(page.getByLabel("BPM", { exact: true })).toHaveValue("132");
 });
+
+test("selection edges resize independently and outside tap starts a new selection", async ({
+  page,
+  context,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await page
+    .locator("input[type=file]")
+    .last()
+    .setInputFiles(join(scratch, "test.wav"));
+  await expect(page.getByText("test.wav", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "2 BARS", exact: true }).click();
+  const surface = page.getByLabel("Glisser pour sélectionner des mesures");
+  await surface.scrollIntoViewIfNeeded();
+  const rect = await surface.boundingBox(),
+    bar = await page.locator(".ruler > div").first().boundingBox();
+  if (!rect || !bar) throw new Error("Missing timeline");
+  const cdp = await context.newCDPSession(page);
+  async function drag(name: string, x: number) {
+    await page
+      .getByRole("button", { name, exact: true })
+      .scrollIntoViewIfNeeded();
+    const h = await page
+      .getByRole("button", { name, exact: true })
+      .boundingBox();
+    if (!h) throw new Error("No handle");
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ id: 1, x: h.x + h.width / 2, y: h.y + h.height / 2 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ id: 1, x, y: h.y + h.height / 2 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+  }
+  await drag("Ajuster la fin de la sélection", rect.x + bar.width * 3.4);
+  await expect(page.locator(".selection-caption")).toHaveText("Mesures 1–4");
+  await drag("Ajuster le début de la sélection", rect.x + bar.width * 1.4);
+  await expect(page.locator(".selection-caption")).toHaveText("Mesures 2–4");
+  await page.touchscreen.tap(rect.x + bar.width * 2.5, rect.y + 90);
+  await expect(page.locator(".selection-caption")).toHaveText("Mesures 2–4");
+  await page.touchscreen.tap(rect.x + bar.width * 0.4, rect.y + 90);
+  await expect(page.locator(".selection-caption")).toHaveText("Mesures 1–1");
+  await page
+    .getByRole("button", {
+      name: "Ajuster la fin de la sélection",
+      exact: true,
+    })
+    .press("ArrowRight");
+  await expect(page.locator(".selection-caption")).toHaveText("Mesures 1–2");
+  await page.getByRole("button", { name: "Vue complète" }).click();
+  await page.getByLabel("Mesure début").fill("3");
+  await page.getByLabel("Mesure fin").fill("3");
+  await page.getByRole("button", { name: "Appliquer la plage" }).click();
+  await expect(page.locator(".selected")).toHaveClass(/compact/);
+  await drag("Ajuster le début de la sélection", rect.x + 30);
+  await expect(page.locator(".selection-caption")).toHaveText("Mesures 1–3");
+  await cdp.detach();
+});

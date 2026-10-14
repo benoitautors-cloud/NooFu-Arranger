@@ -1,4 +1,8 @@
 const help: Record<string, string> = {
+  "Ajuster le début de la sélection":
+    "Faites glisser cette poignée vers la gauche ou la droite pour agrandir ou réduire le début de la zone. La fin reste fixe ; le bord se cale sur des mesures entières.",
+  "Ajuster la fin de la sélection":
+    "Faites glisser cette poignée vers la gauche ou la droite pour agrandir ou réduire la fin de la zone. Le début reste fixe ; le bord se cale sur des mesures entières.",
   "+ NEW PROJECT":
     "Crée un nouveau projet local. Donnez-lui un titre, puis importez votre fichier audio. Vos autres projets sont conservés.",
   "IMPORT AUDIO":
@@ -97,7 +101,7 @@ export function helpFor(control: Element): { title: string; text: string } {
   if (control.classList.contains("selection-surface"))
     return {
       title: "Sélection sur la forme d’onde",
-      text: "Touchez une mesure ou glissez sur plusieurs pour sélectionner une région. La sélection se cale sur les limites des mesures. PLAY SELECTION l’écoute ; + ANNOTATION y attache une instruction.",
+      text: "Touchez hors de la sélection pour commencer une nouvelle région. Glissez sur plusieurs mesures pour la créer ; utilisez ensuite les poignées gauche et droite pour ajuster ses limites. La sélection se cale sur les limites des mesures. PLAY SELECTION l’écoute ; + ANNOTATION y attache une instruction.",
     };
   if (control.closest(".tags"))
     return {
