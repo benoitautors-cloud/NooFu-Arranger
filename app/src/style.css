@@ -135,6 +135,7 @@ label {
   overscroll-behavior-x: contain;
 }
 .timeline-content {
+  overflow: hidden;
   position: relative;
 }
 .ruler {

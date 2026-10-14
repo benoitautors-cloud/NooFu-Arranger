@@ -1,4 +1,4 @@
-# NooFu Arranger v0.1.0
+# NooFu Arranger v0.1.1
 
 Application mobile locale pour écouter un audio, sélectionner des mesures, annoter l’arrangement et transmettre un plan précis à une autre tâche Codex. Elle ne modifie ni ne génère le son. Les fichiers importés restent dans IndexedDB sur l’appareil ; aucun upload n’est effectué.
 
@@ -19,7 +19,7 @@ Vite sert `/NooFu-Arranger/`. `dist/` contient uniquement l’application et ses
 
 ## Utilisation Android
 
-Importer WAV/MP3 (ou un format décodable par Chrome). Définir BPM/signature ; glisser sur l’onde pour une sélection, défiler horizontalement sur la règle. Les boutons de longueur et les limites de mesures affinent la sélection. PLAY SELECTION permet l’audition avec boucle. Ajouter une annotation, nommer une référence, l’insérer dans les instructions suivantes. Les champs sont autosauvegardés ; Terminé ferme l’éditeur. Undo/Redo fonctionne dans la session.
+Importer WAV/MP3 (ou un format décodable par Chrome). Saisir le BPM puis appuyer sur Appliquer BPM ou Entrée ; définir la signature ; glisser sur l’onde pour une sélection, défiler horizontalement sur la règle. Les boutons de longueur et les limites de mesures affinent la sélection. PLAY SELECTION permet l’audition avec boucle. Ajouter une annotation, nommer une référence, l’insérer dans les instructions suivantes. Les champs sont autosauvegardés ; Terminé ferme l’éditeur. Undo/Redo fonctionne dans la session.
 
 Le BPM exprime toujours des noires : en 6/8 une mesure contient trois noires. La première mesure commence à 0 s. La dernière peut être partielle. Changer le tempo/signature recalcule les régions après confirmation ; choisir donc la grille avant d’annoter.
 

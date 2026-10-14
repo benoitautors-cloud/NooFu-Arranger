@@ -136,3 +136,111 @@ test("MP3 decoding and gesture selection", async ({ page }) => {
     fullPage: true,
   });
 });
+
+test("BPM can be cleared and retyped on Android without intermediate grid changes", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  const bpm = page.getByLabel("BPM", { exact: true });
+  await bpm.fill("");
+  await expect(bpm).toHaveValue("");
+  await bpm.pressSequentially("132");
+  await expect(bpm).toHaveValue("132");
+  await page.getByRole("button", { name: "Appliquer BPM" }).click();
+  await expect(page.locator(".project-heading [role=status]")).toHaveText(
+    "Sauvegardé localement",
+  );
+  await page.getByRole("button", { name: "↶ Undo" }).click();
+  await expect(bpm).toHaveValue("130");
+  await page.getByRole("button", { name: "↷ Redo" }).click();
+  await expect(bpm).toHaveValue("132");
+  await bpm.fill("1");
+  await page.getByRole("button", { name: "Appliquer BPM" }).click();
+  await expect(
+    page.getByText("Saisissez un BPM entre 20 et 400."),
+  ).toBeVisible();
+  await bpm.fill("132,5");
+  await bpm.press("Enter");
+  await expect(bpm).toHaveValue("132.5");
+  await expect(page.locator(".project-heading [role=status]")).toHaveText(
+    "Sauvegardé localement",
+  );
+  await page.reload();
+  await page.locator(".projects article > button:first-child").first().click();
+  await expect(page.getByLabel("BPM", { exact: true })).toHaveValue("132.5");
+});
+
+test("title, overview zoom and selection loop remain usable on mobile", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  const title = page.getByLabel("Nom du projet");
+  await title.fill("N");
+  await title.press("Enter");
+  await title.fill("");
+  await expect(title).toHaveValue("");
+  await title.fill("Entre les lumières");
+  await title.press("Enter");
+  await expect(title).toHaveValue("Entre les lumières");
+  await page
+    .locator("input[type=file]")
+    .last()
+    .setInputFiles(join(scratch, "test.wav"));
+  await expect(page.getByText("test.wav", { exact: true })).toBeVisible();
+  const content = page.locator(".timeline-content");
+  const before = await content.evaluate((e) => e.getBoundingClientRect().width);
+  await page.getByRole("button", { name: "Dézoomer", exact: true }).click();
+  expect(
+    await content.evaluate((e) => e.getBoundingClientRect().width),
+  ).toBeLessThan(before);
+  await page.getByRole("button", { name: "Vue complète" }).click();
+  const widths = await page
+    .locator(".timeline-scroll")
+    .evaluate((e) => ({ scroll: e.scrollWidth, client: e.clientWidth }));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+  await page.getByRole("button", { name: "1 BAR", exact: true }).click();
+  await page.getByLabel("Boucler la sélection").check();
+  await expect(page.getByLabel("Boucler la sélection")).toBeChecked();
+  await page.getByRole("button", { name: "PLAY SELECTION" }).click();
+  await expect(
+    page.getByRole("button", { name: "PAUSE", exact: true }),
+  ).toBeVisible();
+  await page.waitForTimeout(2500);
+  await expect(
+    page.getByRole("button", { name: "PAUSE", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "PAUSE", exact: true }).click();
+  await page.reload();
+  await page.locator(".projects article > button:first-child").first().click();
+  await expect(page.getByLabel("Nom du projet")).toHaveValue(
+    "Entre les lumières",
+  );
+});
+
+test("timeline follows playback and can be held still", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await page
+    .locator("input[type=file]")
+    .last()
+    .setInputFiles(join(scratch, "test.wav"));
+  await expect(page.getByText("test.wav", { exact: true })).toBeVisible();
+  for (let i = 0; i < 6; i++)
+    await page.getByRole("button", { name: "Zoomer", exact: true }).click();
+  await expect(page.getByLabel("Suivre la lecture")).toBeChecked();
+  await page.getByRole("button", { name: "PLAY", exact: true }).click();
+  await expect
+    .poll(() => page.locator(".timeline-scroll").evaluate((e) => e.scrollLeft))
+    .toBeGreaterThan(0);
+  await page.getByLabel("Suivre la lecture").uncheck();
+  const held = await page
+    .locator(".timeline-scroll")
+    .evaluate((e) => e.scrollLeft);
+  await page.waitForTimeout(400);
+  expect(
+    await page.locator(".timeline-scroll").evaluate((e) => e.scrollLeft),
+  ).toBe(held);
+  await page.getByRole("button", { name: "PAUSE", exact: true }).click();
+});

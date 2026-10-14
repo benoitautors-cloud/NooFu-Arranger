@@ -25,25 +25,31 @@ export default function Timeline({
   onError,
   onAnnotation,
 }: Props) {
-  const wave = useRef<HTMLDivElement>(null),
+  const viewport = useRef<HTMLDivElement>(null),
+    wave = useRef<HTMLDivElement>(null),
     ws = useRef<WaveSurfer | null>(null),
     selectionRef = useRef(selection),
     callbacks = useRef({ onReady, onError });
   const [seconds, setSeconds] = useState(0),
     [playing, setPlaying] = useState(false),
     [zoom, setZoom] = useState(50),
+    [followPlayback, setFollowPlayback] = useState(true),
     [loop, setLoop] = useState(false),
     [loading, setLoading] = useState(true),
     [duration, setDuration] = useState(p.source?.duration ?? 0);
-  const loopRef = useRef(loop),
+  const followRef = useRef(followPlayback),
+    zoomRef = useRef(zoom),
+    loopRef = useRef(loop),
     audition = useRef(false),
     anchor = useRef<number | null>(null);
   selectionRef.current = selection;
   loopRef.current = loop;
+  followRef.current = followPlayback;
+  zoomRef.current = zoom;
   callbacks.current = { onReady, onError };
   const span = barDuration(p.bpm, p.timeSignature),
     bars = Math.max(1, Math.ceil(duration / span)),
-    width = Math.max(320, duration * zoom),
+    width = Math.max(1, duration * zoom),
     barWidth = span * zoom;
   const pRef = useRef(p);
   pRef.current = p;
@@ -72,6 +78,21 @@ export default function Timeline({
     w.on("pause", () => setPlaying(false));
     w.on("timeupdate", (t) => {
       setSeconds(t);
+      const view = viewport.current;
+      if (
+        view &&
+        followRef.current &&
+        w.isPlaying() &&
+        anchor.current === null
+      ) {
+        const cursor = t * zoomRef.current;
+        if (
+          cursor < view.scrollLeft ||
+          cursor > view.scrollLeft + view.clientWidth * 0.8
+        ) {
+          view.scrollLeft = Math.max(0, cursor - view.clientWidth * 0.2);
+        }
+      }
       const r = selectionRef.current;
       if (r && (loopRef.current || audition.current)) {
         const time = timestamps(pRef.current, r);
@@ -118,12 +139,73 @@ export default function Timeline({
   }
   return (
     <section className="audio-tool" aria-label="Timeline audio">
-      <div className="timeline-scroll">
+      <div className="zoom">
+        <button
+          aria-label="Dézoomer"
+          onClick={() => setZoom(Math.max(0.05, zoom / 1.5))}
+        >
+          − Dézoomer
+        </button>
+        <button
+          aria-label="Zoomer"
+          onClick={() => setZoom(Math.min(400, zoom * 1.5))}
+        >
+          + Zoomer
+        </button>
+        <button
+          onClick={() => {
+            const width =
+              viewport.current?.clientWidth ?? window.innerWidth - 32;
+            setZoom(width / (duration || 1));
+            if (viewport.current) viewport.current.scrollLeft = 0;
+          }}
+        >
+          Vue complète
+        </button>
+      </div>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={followPlayback}
+          onChange={(e) => setFollowPlayback(e.target.checked)}
+        />
+        Suivre la lecture
+      </label>
+      <div className="transport">
+        <button
+          disabled={loading}
+          onClick={() => {
+            audition.current = false;
+            void ws.current?.playPause();
+          }}
+        >
+          {playing ? "PAUSE" : "PLAY"}
+        </button>
+        <button disabled={!selection || loading} onClick={playSelection}>
+          PLAY SELECTION
+        </button>
+        <label className="check">
+          <input
+            type="checkbox"
+            aria-label="Boucler la sélection"
+            disabled={!selection}
+            checked={loop}
+            onChange={(e) => setLoop(e.target.checked)}
+          />
+          Boucler la sélection
+        </label>
+        <output>
+          {seconds.toFixed(1)} / {duration.toFixed(1)} s
+        </output>
+      </div>
+      <div className="timeline-scroll" ref={viewport}>
         <div className="timeline-content" style={{ width }}>
           <div className="ruler">
             {Array.from({ length: bars }, (_, i) => (
               <div key={i} style={{ left: i * barWidth, width: barWidth }}>
-                <b>{i + 1}</b>
+                <b>
+                  {i % Math.max(1, Math.ceil(44 / barWidth)) === 0 ? i + 1 : ""}
+                </b>
                 {barWidth > 100 &&
                   Array.from({ length: p.timeSignature.numerator }, (_, j) => (
                     <small
@@ -194,31 +276,6 @@ export default function Timeline({
           moment.
         </p>
       )}
-      <div className="transport">
-        <button
-          disabled={loading}
-          onClick={() => {
-            audition.current = false;
-            void ws.current?.playPause();
-          }}
-        >
-          {playing ? "PAUSE" : "PLAY"}
-        </button>
-        <button disabled={!selection || loading} onClick={playSelection}>
-          PLAY SELECTION
-        </button>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={loop}
-            onChange={(e) => setLoop(e.target.checked)}
-          />
-          Boucle
-        </label>
-        <output>
-          {seconds.toFixed(1)} / {duration.toFixed(1)} s
-        </output>
-      </div>
       <input
         aria-label="Position de lecture"
         type="range"
@@ -231,18 +288,6 @@ export default function Timeline({
           ws.current?.setTime(Number(e.target.value));
         }}
       />
-      <div className="zoom">
-        <button onClick={() => setZoom(Math.max(2, zoom / 1.5))}>−</button>
-        <button onClick={() => setZoom(Math.min(400, zoom * 1.5))}>+</button>
-        <button
-          onClick={() =>
-            setZoom(Math.max(0.5, (window.innerWidth - 32) / (duration || 1)))
-          }
-        >
-          FIT
-        </button>
-        <span>Glisser sur l’onde pour sélectionner · défiler sur la règle</span>
-      </div>
     </section>
   );
 }

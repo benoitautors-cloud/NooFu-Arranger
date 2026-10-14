@@ -1,3 +1,5 @@
+import ProjectNameInput from "./ProjectNameInput";
+import BpmInput from "./BpmInput";
 import { useEffect, useRef, useState } from "react";
 import Timeline from "./Timeline";
 import {
@@ -49,7 +51,7 @@ export default function App() {
       setError(
         "Cette modification placerait une région hors du fichier audio. Ajustez les régions avant de changer la grille.",
       );
-      return;
+      return false;
     }
     const old = current.current;
     const now = Date.now();
@@ -83,6 +85,7 @@ export default function App() {
         setError("Sauvegarde impossible : " + String(e));
         setStatus("Non sauvegardé");
       });
+    return true;
   }
   async function open(project: Project) {
     await queue.current;
@@ -279,13 +282,10 @@ export default function App() {
       ) : (
         <main>
           <div className="project-heading">
-            <input
-              aria-label="Nom du projet"
+            <ProjectNameInput
+              key={p.id}
               value={p.name}
-              onChange={(e) => {
-                if (e.target.value.trim())
-                  commit({ ...p, name: e.target.value }, true, "name");
-              }}
+              onApply={(name) => commit({ ...p, name })}
             />
             <small role="status">{status}</small>
           </div>
@@ -312,29 +312,20 @@ export default function App() {
             }}
           />
           <div className="toolbar">
-            <label>
-              BPM
-              <input
-                aria-label="BPM"
-                type="number"
-                min="20"
-                max="400"
-                value={p.bpm}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  if (v >= 20 && v <= 400) {
-                    if (
-                      p.annotations.length &&
-                      !confirm(
-                        "Changer le tempo recalculera les temps de toutes les mesures. Continuer ?",
-                      )
-                    )
-                      return;
-                    commit({ ...p, bpm: v });
-                  }
-                }}
-              />
-            </label>
+            <BpmInput
+              key={p.id}
+              value={p.bpm}
+              onApply={(v) => {
+                if (
+                  p.annotations.length &&
+                  !confirm(
+                    "Changer le tempo recalculera les temps de toutes les mesures. Continuer ?",
+                  )
+                )
+                  return false;
+                return commit({ ...p, bpm: v });
+              }}
+            />
             <label>
               Mesure
               <select
