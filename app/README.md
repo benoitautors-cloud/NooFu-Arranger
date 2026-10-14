@@ -1,4 +1,4 @@
-# NooFu Arranger v0.1.2
+# NooFu Arranger v0.1.3
 
 Application mobile locale pour écouter un audio, sélectionner des mesures, annoter l’arrangement et transmettre un plan précis à une autre tâche Codex. Elle ne modifie ni ne génère le son. Les fichiers importés restent dans IndexedDB sur l’appareil ; aucun upload n’est effectué.
 
@@ -16,6 +16,10 @@ npm run build
 ```
 
 Vite sert `/NooFu-Arranger/`. `dist/` contient uniquement l’application et ses icônes, jamais les fichiers du projet musical. Les contrôles Playwright sont dans `e2e/` : après le build, lancer `npm run test:e2e` (Chromium et FFmpeg requis ; deux audios synthétiques sont créés dans le dossier temporaire système, jamais dans public/). Playwright lance le serveur de preview. Chromium système est détecté ; sinon installer le navigateur Playwright ou définir CHROMIUM_PATH.
+
+## Mode tuto
+
+Activer Mode tuto en haut de l’application. Toucher une commande, un champ ou la timeline affiche une explication, sans exécuter l’action. Compris ferme seulement le texte ; Quitter le tuto réactive l’utilisation normale. Les notes et projets restent intacts.
 
 ## Utilisation Android
 

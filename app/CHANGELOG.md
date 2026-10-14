@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 — 2026-10-14
+
+Mode tuto activable depuis l’en-tête : appuyer sur une commande ou un champ affiche son explication en français sans exécuter l’action. Couvre lecture, sélection, gestes, annotations, références, projets et exports ; reste actif jusqu’à Quitter le tuto. Données existantes conservées.
+
 ## 0.1.2 — 2026-10-14
 
 Appui sur la règle numérotée pour placer précisément le curseur de lecture (sans modifier la sélection). Les déplacements et pincements ne déclenchent pas de saut de lecture.

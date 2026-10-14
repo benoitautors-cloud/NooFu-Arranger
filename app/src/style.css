@@ -336,3 +336,31 @@ summary {
     height: 130px;
   }
 }
+
+header button.tutorial-toggle {
+  border: 1px solid #6f8c75;
+  font-size: 13px;
+  padding: 8px;
+  min-height: 44px;
+}
+.tutorial-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #233021;
+  border-top: 2px solid #b9f96d;
+  padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px #0008;
+  max-height: 45dvh;
+  overflow: auto;
+  color: #f0f6ee;
+}
+.tutorial-panel p {
+  line-height: 1.5;
+  margin: 10px 0;
+}
+.tutorial-panel strong {
+  font-size: 18px;
+}

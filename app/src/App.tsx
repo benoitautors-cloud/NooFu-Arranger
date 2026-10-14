@@ -1,3 +1,4 @@
+import Tutorial from "./Tutorial";
 import RangeInput from "./RangeInput";
 import ProjectNameInput from "./ProjectNameInput";
 import BpmInput from "./BpmInput";
@@ -221,6 +222,7 @@ export default function App() {
         <button onClick={() => void home()}>
           NooFu <span>ARRANGER</span>
         </button>
+        <Tutorial />
         <small>v{VERSION}</small>
       </header>
       {error && (

@@ -441,3 +441,52 @@ test("tap on numbered ruler seeks accurately after scroll without changing selec
   ).toBeCloseTo(time, 2);
   await cdp.detach();
 });
+
+test("tutorial explains controls without executing actions and can be exited", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Mode tuto", exact: true }).click();
+  await expect(
+    page.getByText("Mode tuto activé", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await expect(page.locator(".tutorial-panel")).toContainText(
+    "Crée un nouveau projet local",
+  );
+  await expect(page.getByRole("heading", { name: "PROJECTS" })).toBeVisible();
+  await page.locator("header > .tutorial-toggle").click();
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await page.getByLabel("Nom du projet").fill("Tuto test");
+  await page.getByLabel("Nom du projet").press("Enter");
+  await page.getByRole("button", { name: "Mode tuto", exact: true }).click();
+  await page.getByRole("button", { name: "IMPORT AUDIO", exact: true }).click();
+  await expect(page.locator(".tutorial-panel")).toContainText(
+    "sélecteur de fichiers",
+  );
+  await page.getByLabel("BPM", { exact: true }).click();
+  await expect(page.locator(".tutorial-panel")).toContainText(
+    "le fichier audio n’est pas accéléré",
+  );
+  await expect(page.getByLabel("BPM", { exact: true })).toHaveValue("130");
+  await page
+    .getByRole("button", { name: "EXPORT FOR CODEX", exact: true })
+    .dispatchEvent("pointerdown", { pointerId: 1 });
+  await expect(page.locator(".tutorial-panel")).toContainText("edit_plan.json");
+  await page
+    .locator(".tutorial-panel")
+    .getByRole("button", { name: "Compris" })
+    .click();
+  await expect(page.locator(".tutorial-panel")).toBeHidden();
+  await page
+    .getByRole("button", { name: "EXPORT PROJECT", exact: true })
+    .click();
+  await expect(page.locator(".tutorial-panel")).toContainText(
+    "Cette sauvegarde ne contient pas l’audio",
+  );
+  await page.locator("header > .tutorial-toggle").click();
+  await expect(page.getByLabel("Nom du projet")).toHaveValue("Tuto test");
+  await page.getByLabel("BPM", { exact: true }).fill("132");
+  await page.getByRole("button", { name: "Appliquer BPM" }).click();
+  await expect(page.getByLabel("BPM", { exact: true })).toHaveValue("132");
+});
