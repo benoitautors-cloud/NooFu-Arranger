@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import {
   barDuration,
@@ -51,6 +51,111 @@ export default function Timeline({
     bars = Math.max(1, Math.ceil(duration / span)),
     width = Math.max(1, duration * zoom),
     barWidth = span * zoom;
+  const rulerTouches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ distance: number; zoom: number; time: number } | null>(
+    null,
+  );
+  const tap = useRef<{ id: number; x: number; y: number } | null>(null);
+  const pan = useRef<{ x: number; left: number } | null>(null);
+  const zoomAnchor = useRef<{ time: number; x: number } | null>(null);
+  useLayoutEffect(() => {
+    if (zoomAnchor.current && viewport.current) {
+      viewport.current.scrollLeft =
+        zoomAnchor.current.time * zoom - zoomAnchor.current.x;
+      zoomAnchor.current = null;
+    }
+  }, [zoom]);
+  function beginRulerGesture() {
+    const points = [...rulerTouches.current.values()],
+      view = viewport.current;
+    if (!view) return;
+    if (points.length === 2) {
+      const middle =
+        (points[0].x + points[1].x) / 2 - view.getBoundingClientRect().left;
+      pinch.current = {
+        distance: Math.max(
+          1,
+          Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y),
+        ),
+        zoom: zoomRef.current,
+        time: (view.scrollLeft + middle) / zoomRef.current,
+      };
+      pan.current = null;
+    } else if (points.length === 1) {
+      pinch.current = null;
+      pan.current = { x: points[0].x, left: view.scrollLeft };
+    } else {
+      pinch.current = null;
+      pan.current = null;
+    }
+  }
+  function rulerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    rulerTouches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    tap.current =
+      rulerTouches.current.size === 1
+        ? { id: e.pointerId, x: e.clientX, y: e.clientY }
+        : null;
+    beginRulerGesture();
+  }
+  function rulerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!rulerTouches.current.has(e.pointerId) || !viewport.current) return;
+    rulerTouches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (
+      tap.current &&
+      Math.hypot(e.clientX - tap.current.x, e.clientY - tap.current.y) > 6
+    )
+      tap.current = null;
+    const points = [...rulerTouches.current.values()];
+    if (points.length >= 2 && pinch.current) {
+      const distance = Math.hypot(
+        points[1].x - points[0].x,
+        points[1].y - points[0].y,
+      );
+      const middle =
+        (points[0].x + points[1].x) / 2 -
+        viewport.current.getBoundingClientRect().left;
+      const next = Math.max(
+        viewport.current.clientWidth / (duration || 1),
+        Math.min(400, (pinch.current.zoom * distance) / pinch.current.distance),
+      );
+      zoomAnchor.current = { time: pinch.current.time, x: middle };
+      setZoom(next);
+    } else if (points.length === 1 && pan.current) {
+      viewport.current.scrollLeft =
+        pan.current.left - (e.clientX - pan.current.x);
+    }
+  }
+  function rulerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (
+      e.type === "pointerup" &&
+      tap.current?.id === e.pointerId &&
+      viewport.current
+    ) {
+      const time = Math.max(
+        0,
+        Math.min(
+          duration,
+          (viewport.current.scrollLeft +
+            e.clientX -
+            viewport.current.getBoundingClientRect().left) /
+            zoomRef.current,
+        ),
+      );
+      audition.current = false;
+      const region = selectionRef.current;
+      if (region) {
+        const bounds = timestamps(pRef.current, region);
+        if (time < bounds.startSeconds || time >= bounds.endSeconds) {
+          setLoop(false);
+          loopRef.current = false;
+        }
+      }
+      ws.current?.setTime(time);
+    }
+    tap.current = null;
+    if (rulerTouches.current.delete(e.pointerId)) beginRulerGesture();
+  }
   const pRef = useRef(p);
   pRef.current = p;
   useEffect(() => {
@@ -83,7 +188,8 @@ export default function Timeline({
         view &&
         followRef.current &&
         w.isPlaying() &&
-        anchor.current === null
+        anchor.current === null &&
+        rulerTouches.current.size === 0
       ) {
         const cursor = t * zoomRef.current;
         if (
@@ -198,9 +304,21 @@ export default function Timeline({
           {seconds.toFixed(1)} / {duration.toFixed(1)} s
         </output>
       </div>
+      <small>
+        Appui sur la règle : déplacer la lecture. Deux doigts : zoomer /
+        dézoomer.
+      </small>
       <div className="timeline-scroll" ref={viewport}>
         <div className="timeline-content" style={{ width }}>
-          <div className="ruler">
+          <div
+            className="ruler"
+            aria-label="Règle des mesures : zoom à deux doigts"
+            onPointerDown={rulerDown}
+            onPointerMove={rulerMove}
+            onPointerUp={rulerUp}
+            onPointerCancel={rulerUp}
+            onLostPointerCapture={rulerUp}
+          >
             {Array.from({ length: bars }, (_, i) => (
               <div key={i} style={{ left: i * barWidth, width: barWidth }}>
                 <b>

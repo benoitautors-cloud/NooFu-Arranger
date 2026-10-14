@@ -1,3 +1,4 @@
+import RangeInput from "./RangeInput";
 import ProjectNameInput from "./ProjectNameInput";
 import BpmInput from "./BpmInput";
 import { useEffect, useRef, useState } from "react";
@@ -186,10 +187,16 @@ export default function App() {
     if (!project) return;
     const f = pendingFile.current;
     pendingFile.current = null;
-    if (f)
+    const sourceFile = f ?? (!project.source ? audio : undefined);
+    if (sourceFile)
       commit({
         ...project,
-        source: { name: f.name, size: f.size, type: f.type, duration },
+        source: {
+          name: sourceFile instanceof File ? sourceFile.name : "audio_source",
+          size: sourceFile.size,
+          type: sourceFile.type,
+          duration,
+        },
       });
   }
   async function importProject(file: File) {
@@ -417,43 +424,15 @@ export default function App() {
             </div>
             {selection && (
               <div className="toolbar">
-                <label>
-                  Début
-                  <input
-                    aria-label="Mesure début"
-                    type="number"
-                    min={1}
-                    max={selection.barEnd}
-                    value={selection.barStart}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      if (v >= 1 && v <= selection.barEnd)
-                        select({ ...selection, barStart: v });
-                    }}
-                  />
-                </label>
-                <label>
-                  Fin
-                  <input
-                    aria-label="Mesure fin"
-                    type="number"
-                    min={selection.barStart}
-                    max={Math.ceil(
-                      (p.source?.duration ?? 0) /
-                        barDuration(p.bpm, p.timeSignature),
-                    )}
-                    value={selection.barEnd}
-                    onChange={(e) => {
-                      const v = Number(e.target.value),
-                        max = Math.ceil(
-                          (p.source?.duration ?? 0) /
-                            barDuration(p.bpm, p.timeSignature),
-                        );
-                      if (v >= selection.barStart && v <= max)
-                        select({ ...selection, barEnd: v });
-                    }}
-                  />
-                </label>
+                <RangeInput
+                  key={p.id}
+                  value={selection}
+                  max={Math.ceil(
+                    (p.source?.duration ?? 0) /
+                      barDuration(p.bpm, p.timeSignature),
+                  )}
+                  onApply={select}
+                />
                 <button className="primary" onClick={add}>
                   + ANNOTATION
                 </button>

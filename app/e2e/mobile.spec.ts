@@ -244,3 +244,200 @@ test("timeline follows playback and can be held still", async ({ page }) => {
   ).toBe(held);
   await page.getByRole("button", { name: "PAUSE", exact: true }).click();
 });
+
+test("bar limits allow clearing, crossing old boundaries and validating together", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await page
+    .locator("input[type=file]")
+    .last()
+    .setInputFiles(join(scratch, "test.wav"));
+  await expect(page.getByText("test.wav", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "4 BARS", exact: true }).click();
+  const start = page.getByLabel("Mesure début"),
+    end = page.getByLabel("Mesure fin");
+  await end.fill("");
+  await expect(end).toHaveValue("");
+  await end.pressSequentially("2");
+  await expect(page.locator(".selected")).toContainText("Mesures 1–4");
+  await page.getByRole("button", { name: "Appliquer la plage" }).click();
+  await expect(page.locator(".selected")).toContainText("Mesures 1–2");
+  await start.fill("");
+  await expect(start).toHaveValue("");
+  await start.fill("3");
+  await end.fill("4");
+  await end.press("Enter");
+  await expect(page.locator(".selected")).toContainText("Mesures 3–4");
+  await end.fill("2");
+  await page.getByRole("button", { name: "Appliquer la plage" }).click();
+  await expect(page.getByText(/Choisissez des mesures entières/)).toBeVisible();
+  await expect(page.locator(".selected")).toContainText("Mesures 3–4");
+  await end.fill("4.5");
+  await page.getByRole("button", { name: "Appliquer la plage" }).click();
+  await expect(page.getByText(/Choisissez des mesures entières/)).toBeVisible();
+  await end.fill("4");
+  await end.press("Enter");
+  await page.getByRole("button", { name: "+ ANNOTATION" }).click();
+  await expect(page.locator(".sheet-header")).toContainText("Mesures 3–4");
+});
+
+test("legacy audio without metadata recovers bar controls", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await page
+    .locator("input[type=file]")
+    .last()
+    .setInputFiles(join(scratch, "test.wav"));
+  await expect(page.getByText("test.wav", { exact: true })).toBeVisible();
+  await expect(page.locator(".project-heading [role=status]")).toHaveText(
+    "Sauvegardé localement",
+  );
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open("noofu-arranger", 1);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction("projects", "readwrite"),
+            store = tx.objectStore("projects");
+          const cursor = store.openCursor();
+          cursor.onsuccess = () => {
+            const row = cursor.result;
+            if (row) store.put({ ...row.value, source: null });
+          };
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      }),
+  );
+  await page.reload();
+  await page.locator(".projects article > button:first-child").first().click();
+  await expect(
+    page.getByRole("button", { name: "4 BARS", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "4 BARS", exact: true }).click();
+  await expect(page.locator(".selected")).toContainText("Mesures 1–4");
+});
+
+test("two-finger ruler pinch zooms both ways and preserves selected bars", async ({
+  page,
+  context,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await page
+    .locator("input[type=file]")
+    .last()
+    .setInputFiles(join(scratch, "test.wav"));
+  await expect(page.getByText("test.wav", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "2 BARS", exact: true }).click();
+  for (let i = 0; i < 3; i++)
+    await page.getByRole("button", { name: "Zoomer", exact: true }).click();
+  const ruler = page.getByLabel("Règle des mesures : zoom à deux doigts");
+  await ruler.scrollIntoViewIfNeeded();
+  const rect = await ruler.boundingBox();
+  if (!rect) throw new Error("No ruler");
+  const cdp = await context.newCDPSession(page);
+  const y = rect.y + 20;
+  const content = page.locator(".timeline-content");
+  const before = await content.evaluate((e) => e.getBoundingClientRect().width);
+  const points = (a: number, b: number) => [
+    { id: 1, x: rect.x + a, y },
+    { id: 2, x: rect.x + b, y },
+  ];
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: points(60, 290),
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: points(110, 240),
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect
+    .poll(() => content.evaluate((e) => e.getBoundingClientRect().width))
+    .toBeLessThan(before);
+  const smaller = await content.evaluate(
+    (e) => e.getBoundingClientRect().width,
+  );
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: points(110, 240),
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: points(50, 300),
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect
+    .poll(() => content.evaluate((e) => e.getBoundingClientRect().width))
+    .toBeGreaterThan(smaller);
+  await expect(page.locator(".selected")).toContainText("Mesures 1–2");
+  await cdp.detach();
+});
+
+test("tap on numbered ruler seeks accurately after scroll without changing selection", async ({
+  page,
+  context,
+}) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "+ NEW PROJECT" }).click();
+  await page
+    .locator("input[type=file]")
+    .last()
+    .setInputFiles(join(scratch, "test.wav"));
+  await expect(page.getByText("test.wav", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "2 BARS", exact: true }).click();
+  for (let i = 0; i < 2; i++)
+    await page.getByRole("button", { name: "Zoomer", exact: true }).click();
+  const ruler = page.getByLabel("Règle des mesures : zoom à deux doigts");
+  await ruler.scrollIntoViewIfNeeded();
+  const view = page.locator(".timeline-scroll");
+  await view.evaluate((e) => (e.scrollLeft = 200));
+  const rect = await view.boundingBox(),
+    rulerRect = await ruler.boundingBox();
+  if (!rect || !rulerRect) throw new Error("No ruler");
+  await page.touchscreen.tap(rect.x + 120, rulerRect.y + 20);
+  const time = Number(
+    await page
+      .getByRole("slider", { name: "Position de lecture" })
+      .inputValue(),
+  );
+  expect(time).toBeCloseTo(320 / 112.5, 1);
+  await expect(page.locator(".selected")).toContainText("Mesures 1–2");
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ id: 1, x: rect.x + 220, y: rulerRect.y + 20 }],
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [{ id: 1, x: rect.x + 120, y: rulerRect.y + 20 }],
+  });
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  expect(
+    Number(
+      await page
+        .getByRole("slider", { name: "Position de lecture" })
+        .inputValue(),
+    ),
+  ).toBeCloseTo(time, 2);
+  await cdp.detach();
+});

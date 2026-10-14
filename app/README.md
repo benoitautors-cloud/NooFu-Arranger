@@ -1,4 +1,4 @@
-# NooFu Arranger v0.1.1
+# NooFu Arranger v0.1.2
 
 Application mobile locale pour écouter un audio, sélectionner des mesures, annoter l’arrangement et transmettre un plan précis à une autre tâche Codex. Elle ne modifie ni ne génère le son. Les fichiers importés restent dans IndexedDB sur l’appareil ; aucun upload n’est effectué.
 
@@ -37,7 +37,7 @@ La fermeture/recharge conserve les projets, mais effacer les données Chrome ou 
 - `App.tsx` : projets, annotations/références, undo et autosave séquentielle.
 - `export.ts` : ZIP et téléchargements.
 
-WaveSurfer utilise le décodage du navigateur ; la mémoire requise augmente avec la longueur de l’audio. L’état de chargement reste visible, le décodage est asynchrone. Des fichiers très longs peuvent dépasser la mémoire du téléphone : importer un MP3 plus léger ou travailler par section. Pas de promesse de streaming de forme d’onde en V1. ZIP source désactivé par défaut et limité à 100 Mo ; la compression est désactivée pour éviter le travail inutile. Pinch non implémenté : boutons −/+ et FIT.
+WaveSurfer utilise le décodage du navigateur ; la mémoire requise augmente avec la longueur de l’audio. L’état de chargement reste visible, le décodage est asynchrone. Des fichiers très longs peuvent dépasser la mémoire du téléphone : importer un MP3 plus léger ou travailler par section. Pas de promesse de streaming de forme d’onde en V1. ZIP source désactivé par défaut et limité à 100 Mo ; la compression est désactivée pour éviter le travail inutile. Zoom à deux doigts sur la règle des mesures, boutons Dézoomer/Zoomer et Vue complète. Le point entre les doigts reste ancré pendant le geste ; un doigt sur la règle fait défiler. Un appui bref sur la règle place le curseur à la position audio exacte sans changer les mesures sélectionnées.
 
 ## Déploiement PWA
 
